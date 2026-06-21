@@ -1,86 +1,23 @@
 import sqlite3
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# 1. 取得目前 app.py 所在的資料夾路徑 (也就是根目錄)
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
-# 2. 告訴 Flask：你的網頁 (templates) 和靜態檔案 (static) 全都在這個根目錄裡！
-app = Flask(__name__, template_folder=BASE_DIR, static_folder=BASE_DIR)
+app = Flask(__name__)
 app.secret_key = 'bookhole_super_secret_key'
-
-# 動態判斷：如果在 Railway 上運行，就把照片存進共用硬碟 /app/data/uploads
-if os.environ.get('PORT'):
-    app.config['UPLOAD_FOLDER'] = '/app/data/uploads'
-else:
-    # 本機測試時，直接在根目錄建一個 uploads 資料夾裝照片
-    app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def get_db_connection():
-    # 動態判斷：如果在 Railway 上運行，就把資料庫建在共用硬碟 /app/data 裡面
-    if os.environ.get('PORT'):
-        db_path = '/app/data/bookhole.db'
-    else:
-        db_path = 'bookhole.db'
-        
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect('bookhole.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-# 自動建立所有需要的資料表與升級遷移
-def init_db_tables():
+# 自動建立討論區相關資料表與升級遷移
+def init_discussion_tables():
     conn = get_db_connection()
-    
-    # === 1. 建立所有核心資料表 (如果不存在的話) ===
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS Users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            nickname TEXT,
-            bio TEXT,
-            fav_book TEXT,
-            quote TEXT,
-            avatar_url TEXT,
-            top1_img TEXT,
-            top2_img TEXT,
-            top3_img TEXT
-        )
-    ''')
-    
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS Library (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            title TEXT,
-            author TEXT,
-            review TEXT,
-            cover_img_url TEXT
-        )
-    ''')
-    
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS Recommendations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            author TEXT,
-            added_by INTEGER
-        )
-    ''')
-    
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS Recommendation_Votes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            rec_id INTEGER,
-            user_id INTEGER,
-            UNIQUE(rec_id, user_id)
-        )
-    ''')
-
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,7 +26,6 @@ def init_db_tables():
             UNIQUE(title, author)
         )
     ''')
-    
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Discussions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,7 +37,6 @@ def init_db_tables():
             created_at TEXT
         )
     ''')
-    
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,9 +47,7 @@ def init_db_tables():
         )
     ''')
     conn.commit()
-
-    # === 2. 舊資料表欄位升級 (防呆機制) ===
-    # 升級 Discussions
+    
     try:
         conn.execute('SELECT book_id FROM Discussions LIMIT 1')
     except sqlite3.OperationalError:
@@ -131,9 +64,13 @@ def init_db_tables():
             cursor = conn.execute('INSERT INTO Books (title, author) VALUES (?, ?)', (row['title'], row['author']))
             b_id = cursor.lastrowid
         conn.execute('UPDATE Discussions SET book_id = ? WHERE id = ?', (b_id, row['id']))
+    
     conn.commit()
+    conn.close()
 
-    # 升級 Users
+# 自動為 Users 資料表擴充 TOP 3 獨立書本封面欄位
+def init_user_top_books():
+    conn = get_db_connection()
     try:
         conn.execute('SELECT top1_img FROM Users LIMIT 1')
     except sqlite3.OperationalError:
@@ -141,12 +78,10 @@ def init_db_tables():
         conn.execute('ALTER TABLE Users ADD COLUMN top2_img TEXT')
         conn.execute('ALTER TABLE Users ADD COLUMN top3_img TEXT')
         conn.commit()
-
     conn.close()
 
-# 程式啟動時，執行一次大統整初始化
-init_db_tables()
-
+init_discussion_tables()
+init_user_top_books()
 
 # ===== 登入與註冊 =====
 @app.route('/login', methods=['GET', 'POST'])
@@ -214,6 +149,7 @@ def profile():
     user = conn.execute('SELECT * FROM Users WHERE id = ?', (session['user_id'],)).fetchone()
     conn.close()
     
+    # 這裡已經不需要再抓 Library 的書了，因為我們有獨立的欄位
     return render_template('profile.html', user=user)
 
 # 專門更新個人主頁 TOP 3 書籍封面的獨立路由
@@ -228,6 +164,7 @@ def update_top_book(slot):
         img_file.save(os.path.join(app.config['UPLOAD_FOLDER'], img_filename))
 
         conn = get_db_connection()
+        # 動態指定更新 top1_img, top2_img 還是 top3_img
         column_name = f'top{slot}_img'
         conn.execute(f'UPDATE Users SET {column_name} = ? WHERE id = ?', (img_filename, session['user_id']))
         conn.commit()
@@ -296,13 +233,17 @@ def edit_book(book_id):
     conn.close()
     return redirect(url_for('library'))
 
+# 新增：刪除書籍的路由
 @app.route('/delete_book/<int:book_id>')
 def delete_book(book_id):
     if 'user_id' not in session: return redirect(url_for('login'))
+    
     conn = get_db_connection()
+    # 確保只有該書籍的擁有者才能刪除
     conn.execute('DELETE FROM Library WHERE id = ? AND user_id = ?', (book_id, session['user_id']))
     conn.commit()
     conn.close()
+    
     return redirect(url_for('library'))
 
 # ===== 好書推薦 =====
@@ -443,13 +384,6 @@ def delete_comment(comment_id):
     conn.commit()
     conn.close()
     return redirect(url_for('discussion'))
-
-# ===== 建立圖片橋樑 (終極防呆版) =====
-# 加上 path: 讓 Flask 能正確解析帶有斜線的路徑
-@app.route('/static/uploads/<path:filename>')
-@app.route('/uploads/<path:filename>')
-def serve_uploaded_images(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     app.run(debug=True)
