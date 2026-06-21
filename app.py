@@ -1,7 +1,7 @@
 import sqlite3
 import os
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # 1. 取得目前 app.py 所在的資料夾路徑 (也就是根目錄)
@@ -214,7 +214,6 @@ def profile():
     user = conn.execute('SELECT * FROM Users WHERE id = ?', (session['user_id'],)).fetchone()
     conn.close()
     
-    # 這裡已經不需要再抓 Library 的書了，因為我們有獨立的欄位
     return render_template('profile.html', user=user)
 
 # 專門更新個人主頁 TOP 3 書籍封面的獨立路由
@@ -229,7 +228,6 @@ def update_top_book(slot):
         img_file.save(os.path.join(app.config['UPLOAD_FOLDER'], img_filename))
 
         conn = get_db_connection()
-        # 動態指定更新 top1_img, top2_img 還是 top3_img
         column_name = f'top{slot}_img'
         conn.execute(f'UPDATE Users SET {column_name} = ? WHERE id = ?', (img_filename, session['user_id']))
         conn.commit()
@@ -298,17 +296,13 @@ def edit_book(book_id):
     conn.close()
     return redirect(url_for('library'))
 
-# 新增：刪除書籍的路由
 @app.route('/delete_book/<int:book_id>')
 def delete_book(book_id):
     if 'user_id' not in session: return redirect(url_for('login'))
-    
     conn = get_db_connection()
-    # 確保只有該書籍的擁有者才能刪除
     conn.execute('DELETE FROM Library WHERE id = ? AND user_id = ?', (book_id, session['user_id']))
     conn.commit()
     conn.close()
-    
     return redirect(url_for('library'))
 
 # ===== 好書推薦 =====
@@ -449,11 +443,11 @@ def delete_comment(comment_id):
     conn.commit()
     conn.close()
     return redirect(url_for('discussion'))
-from flask import send_from_directory
 
-# 建立圖片橋樑：不論你的 HTML 寫 /static/uploads/ 還是 /uploads/，都能自動應付！
-@app.route('/static/uploads/<filename>')
-@app.route('/uploads/<filename>')
+# ===== 建立圖片橋樑 (終極防呆版) =====
+# 加上 path: 讓 Flask 能正確解析帶有斜線的路徑
+@app.route('/static/uploads/<path:filename>')
+@app.route('/uploads/<path:filename>')
 def serve_uploaded_images(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
