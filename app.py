@@ -6,12 +6,23 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'bookhole_super_secret_key'
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+
+# 動態判斷：如果在 Railway 上運行，就把照片存進共用硬碟 /app/data/uploads
+if os.environ.get('PORT'):
+    app.config['UPLOAD_FOLDER'] = '/app/data/uploads'
+else:
+    app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def get_db_connection():
-    conn = sqlite3.connect('bookhole.db')
+    # 動態判斷：如果在 Railway 上運行，就把資料庫建在共用硬碟 /app/data 裡面
+    if os.environ.get('PORT'):
+        db_path = '/app/data/bookhole.db'
+    else:
+        db_path = 'bookhole.db'
+        
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
 
