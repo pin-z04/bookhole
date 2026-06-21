@@ -4,14 +4,19 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__)
+# 1. 取得目前 app.py 所在的資料夾路徑 (也就是根目錄)
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# 2. 告訴 Flask：你的網頁 (templates) 和靜態檔案 (static) 全都在這個根目錄裡！
+app = Flask(__name__, template_folder=BASE_DIR, static_folder=BASE_DIR)
 app.secret_key = 'bookhole_super_secret_key'
 
 # 動態判斷：如果在 Railway 上運行，就把照片存進共用硬碟 /app/data/uploads
 if os.environ.get('PORT'):
     app.config['UPLOAD_FOLDER'] = '/app/data/uploads'
 else:
-    app.config['UPLOAD_FOLDER'] = 'static/uploads'
+    # 本機測試時，直接在根目錄建一個 uploads 資料夾裝照片
+    app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads')
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
