@@ -26,9 +26,56 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-# 自動建立討論區相關資料表與升級遷移
-def init_discussion_tables():
+# 自動建立所有需要的資料表與升級遷移
+def init_db_tables():
     conn = get_db_connection()
+    
+    # === 1. 建立所有核心資料表 (如果不存在的話) ===
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS Users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            nickname TEXT,
+            bio TEXT,
+            fav_book TEXT,
+            quote TEXT,
+            avatar_url TEXT,
+            top1_img TEXT,
+            top2_img TEXT,
+            top3_img TEXT
+        )
+    ''')
+    
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS Library (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            title TEXT,
+            author TEXT,
+            review TEXT,
+            cover_img_url TEXT
+        )
+    ''')
+    
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS Recommendations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            author TEXT,
+            added_by INTEGER
+        )
+    ''')
+    
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS Recommendation_Votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rec_id INTEGER,
+            user_id INTEGER,
+            UNIQUE(rec_id, user_id)
+        )
+    ''')
+
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Books (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,6 +84,7 @@ def init_discussion_tables():
             UNIQUE(title, author)
         )
     ''')
+    
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Discussions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +96,7 @@ def init_discussion_tables():
             created_at TEXT
         )
     ''')
+    
     conn.execute('''
         CREATE TABLE IF NOT EXISTS Comments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +107,9 @@ def init_discussion_tables():
         )
     ''')
     conn.commit()
-    
+
+    # === 2. 舊資料表欄位升級 (防呆機制) ===
+    # 升級 Discussions
     try:
         conn.execute('SELECT book_id FROM Discussions LIMIT 1')
     except sqlite3.OperationalError:
@@ -75,13 +126,9 @@ def init_discussion_tables():
             cursor = conn.execute('INSERT INTO Books (title, author) VALUES (?, ?)', (row['title'], row['author']))
             b_id = cursor.lastrowid
         conn.execute('UPDATE Discussions SET book_id = ? WHERE id = ?', (b_id, row['id']))
-    
     conn.commit()
-    conn.close()
 
-# 自動為 Users 資料表擴充 TOP 3 獨立書本封面欄位
-def init_user_top_books():
-    conn = get_db_connection()
+    # 升級 Users
     try:
         conn.execute('SELECT top1_img FROM Users LIMIT 1')
     except sqlite3.OperationalError:
@@ -89,10 +136,12 @@ def init_user_top_books():
         conn.execute('ALTER TABLE Users ADD COLUMN top2_img TEXT')
         conn.execute('ALTER TABLE Users ADD COLUMN top3_img TEXT')
         conn.commit()
+
     conn.close()
 
-init_discussion_tables()
-init_user_top_books()
+# 程式啟動時，執行一次大統整初始化
+init_db_tables()
+
 
 # ===== 登入與註冊 =====
 @app.route('/login', methods=['GET', 'POST'])
