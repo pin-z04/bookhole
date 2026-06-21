@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap');
+
+body {
+    margin: 0;
+    font-family: 'Noto Serif TC', serif; 
+    font-weight: 700;
+    background-color: #8b94a8; /* 莫蘭迪藍灰底色 */
+    color: #000;
+}
+
+header {
+    background-color: #000;
+    color: #fff;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header a { 
+    color: white; 
+    text-decoration: none; 
+    font-size: 24px; 
+    letter-spacing: 2px;
+}
+
+.container { 
+    max-width: 1100px; 
+    margin: 40px auto; 
+    padding: 0 20px; 
+}
+
+.card {
+    background-color: #c6bee3; /* 卡片淡紫色 */
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+/* 按鈕與標籤 */
+.btn-add { background-color: transparent; border: none; font-size: 20px; cursor: pointer; font-weight: 700;}
+.tag { background-color: #d4b8cc; padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+
+/* 彈出視窗 (Modal) */
+dialog {
+    border: none;
+    border-radius: 15px;
+    padding: 30px;
+    width: 400px;
+    background-color: #f4f4f4;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    font-family: 'Noto Serif TC', serif;
+}
+dialog::backdrop { background-color: rgba(0, 0, 0, 0.6); }
+
+/* 表單元件 */
+input[type="text"], input[type="password"], textarea, input[type="file"] {
+    width: 100%; padding: 10px; margin: 8px 0 15px 0;
+    border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+}
+
+textarea { resize: none; }
+
+.btn-primary {
+    background-color: #000; color: #fff; border: none;
+    padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%;
+    font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 16px;
+}
+.btn-secondary {
+    background-color: transparent; border: 1px solid #000;
+    padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 10px;
+    font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 16px;
+}

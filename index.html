@@ -1,0 +1,58 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div style="text-align: center; margin-top: 50px;">
+    <h1 style="font-size: 40px; margin-bottom: 50px; letter-spacing: 5px;">歡迎回到書洞</h1>
+    
+    <div class="grid-2" style="max-width: 800px; margin: 0 auto; gap: 40px;">
+        <a href="/profile" class="nav-card">
+            <div class="card">
+                <h2>個人主頁</h2>
+                <p>管理您的個人資訊與書櫃</p>
+            </div>
+        </a>
+        
+        <a href="/library" class="nav-card">
+            <div class="card">
+                <h2>我的書庫</h2>
+                <p>紀錄與回顧您的閱讀心得</p>
+            </div>
+        </a>
+        
+        <a href="/recommend" class="nav-card">
+            <div class="card">
+                <h2>好書推薦</h2>
+                <p>看看大家都在讀什麼</p>
+            </div>
+        </a>
+        
+        <a href="/discussion" class="nav-card">
+            <div class="card">
+                <h2>書籍討論區</h2>
+                <p>與書友交流您的想法</p>
+            </div>
+        </a>
+    </div>
+</div>
+
+<style>
+    /* 讓連結點擊後不會變色，且擁有懸浮動畫 */
+    .nav-card { 
+        text-decoration: none; 
+        color: #000; 
+        transition: transform 0.3s ease; 
+    }
+    .nav-card:hover {
+        transform: translateY(-10px);
+    }
+    .nav-card .card {
+        background-color: #c6bee3;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    .nav-card:hover .card {
+        border-color: #fff;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
