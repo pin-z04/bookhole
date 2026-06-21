@@ -1,0 +1,186 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h1 style="text-align: center; font-size: 40px; margin-bottom: 40px; letter-spacing: 3px;">書籍討論區</h1>
+
+<div class="grid-3">
+    {% for book in books %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 340px; position: relative;">
+        <div>
+            <div style="border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 19px; word-break: break-all; color: #111;">📚 {{ book['title'] }}</h3>
+                <small style="color: #555; display: block; margin-top: 4px; font-size: 13px;">✍️ {{ book['author'] if book['author'] else '未知作者' }}</small>
+            </div>
+            
+            <div style="margin-top: 12px; max-height: 180px; overflow-y: auto; padding-right: 4px;">
+                {% for disc in book['discussions'] %}
+                <div onclick="document.getElementById('allCommentsModal-{{ disc.id }}').showModal()"
+                     style="cursor: pointer; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px; border-left: 4px solid #a5b88f; margin-bottom: 10px; transition: 0.2s;"
+                     class="viewpoint-item">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; color: #777; margin-bottom: 4px;">
+                        <span>💡 @{{ disc['username'] }}</span>
+                        <span>⏱️ {{ disc['created_at'] }}</span>
+                    </div>
+                    <p style="margin: 0; font-size: 13.5px; color: #333; line-height: 1.4; word-break: break-all;">
+                        {{ disc['viewpoint'] }}
+                    </p>
+                    <small style="color: #888; font-size: 11px; display: block; text-align: right; margin-top: 3px;">💬 留言 ({{ disc['comments']|length }})</small>
+                </div>
+
+                <dialog id="allCommentsModal-{{ disc.id }}" class="custom-dialog">
+                    <h3 style="margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 18px; color: #111;">
+                        《{{ book['title'] }}》觀點研討
+                    </h3>
+                    
+                    <div style="background: rgba(165,184,143,0.1); border-left: 4px solid #a5b88f; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                        <span style="font-size: 11px; color: #666; display: block; margin-bottom: 4px;">由 @{{ disc['username'] }} 提問於 {{ disc['created_at'] }}</span>
+                        <p style="margin: 0; font-size: 15px; color: #222; font-weight: 500; word-break: break-all;">{{ disc['viewpoint'] }}</p>
+                    </div>
+
+                    <div style="max-height: 280px; overflow-y: auto; margin-bottom: 15px; padding-right: 5px;">
+                        {% for comment in disc['comments'] %}
+                        <div style="margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px; background: #fdfdfd; padding: 10px; border-radius: 8px; border: 1px solid #eee;">
+                            <div style="width: 32px; height: 32px; background: #e0e0e0; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                {% if comment['avatar_url'] %}
+                                    <img src="{{ url_for('static', filename='uploads/' + comment['avatar_url']) }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                {% else %}
+                                    <span style="font-size: 9px; color: #666;">User</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="flex-grow: 1; word-break: break-all;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <small style="color: #444; font-weight: bold;">@{{ comment['username'] }}</small>
+                                    <small style="color: #999; font-size: 11px;">{{ comment['created_at'] }}</small>
+                                </div>
+                                
+                                <div id="view-mode-{{ comment.id }}">
+                                    <p style="margin: 5px 0; font-size: 13.5px; color: #222;">{{ comment['content'] }}</p>
+                                    
+                                    {% if comment['user_id'] == session.get('user_id') %}
+                                    <div style="display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end;">
+                                        <button type="button" onclick="toggleEditMode('{{ comment.id }}')" style="font-size: 11px; padding: 2px 8px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">編輯</button>
+                                        <form method="POST" action="/delete_comment/{{ comment.id }}" style="margin: 0;" onsubmit="return confirm('確定要刪除這則留言嗎？');">
+                                            <button type="submit" style="font-size: 11px; padding: 2px 8px; border: 1px solid #ffcccc; background: #fff0f0; color: #d9534f; border-radius: 4px; cursor: pointer;">刪除</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                {% if comment['user_id'] == session.get('user_id') %}
+                                <form id="edit-mode-{{ comment.id }}" style="display: none; margin-top: 5px;" method="POST" action="/edit_comment/{{ comment.id }}">
+                                    <textarea name="content" rows="2" style="width: 100%; box-sizing: border-box; padding: 6px; border-radius: 4px; border: 1px solid #a5b88f;" required>{{ comment['content'] }}</textarea>
+                                    <div style="display: flex; gap: 8px; margin-top: 5px; justify-content: flex-end;">
+                                        <button type="button" onclick="toggleEditMode('{{ comment.id }}')" style="font-size: 11px; padding: 2px 8px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">取消</button>
+                                        <button type="submit" style="font-size: 11px; padding: 2px 8px; border: none; background: #a5b88f; color: white; border-radius: 4px; cursor: pointer;">儲存修改</button>
+                                    </div>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <p style="text-align: center; color: #aaa; font-size: 13.5px; margin: 20px 0;">目前無留言，快來發表看法吧！</p>
+                        {% endfor %}
+                    </div>
+
+                    <form method="POST" action="/add_comment/{{ disc.id }}" style="border-top: 1px solid #eee; padding-top: 12px;">
+                        <textarea name="content" rows="2" style="width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px;" placeholder="寫下你的看法..." required></textarea>
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+                            <button type="button" class="btn-secondary" style="margin: 0; padding: 6px 12px; font-size: 13px;" onclick="document.getElementById('allCommentsModal-{{ disc.id }}').close()">關閉視窗</button>
+                            <button type="submit" class="btn-primary" style="margin: 0; padding: 6px 12px; font-size: 13px;">送出留言</button>
+                        </div>
+                    </form>
+                </dialog>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div style="margin-top: 12px; border-top: 1px solid rgba(0,0,0,0.08); padding-top: 8px;">
+            <div onclick="document.getElementById('addViewpointModal-{{ book.id }}').showModal()" 
+                 style="text-align: center; color: #a5b88f; cursor: pointer; font-size: 14px; font-weight: bold; padding: 6px 0; transition: 0.2s;">
+                ＋新增觀點
+            </div>
+        </div>
+
+        <dialog id="addViewpointModal-{{ book.id }}" class="custom-dialog">
+            <h3 style="margin-top: 0;">發布《{{ book['title'] }}》的新討論觀點</h3>
+            <form method="POST" action="/discussion">
+                <input type="hidden" name="book_id" value="{{ book.id }}">
+                <label>新增討論核心 / 觀點：</label>
+                <textarea name="viewpoint" rows="4" placeholder="請輸入你對這本書想探討的特定主題..." required></textarea>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn-primary">確定發布</button>
+                    <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="document.getElementById('addViewpointModal-{{ book.id }}').close()">取消</button>
+                </div>
+            </form>
+        </dialog>
+    </div>
+    {% endfor %}
+
+    <div class="card" style="display: flex; align-items: center; justify-content: center; min-height: 340px; cursor: pointer; border: 2px dashed #666; background: transparent; border-radius: 15px; transition: 0.2s;" onclick="document.getElementById('addBookModal').showModal()">
+        <button class="btn-add" style="pointer-events: none;">＋發布全新書目</button>
+    </div>
+</div>
+
+<dialog id="addBookModal" class="custom-dialog">
+    <h3 style="margin-top: 0;">建立新書與首個討論觀點</h3>
+    <form method="POST" action="/discussion">
+        <label>書名：</label>
+        <input type="text" name="title" placeholder="例如：原子習慣" required>
+        
+        <label>作者：</label>
+        <input type="text" name="author" placeholder="例如：詹姆斯·克利爾">
+        
+        <label>觀點 / 討論核心：</label>
+        <textarea name="viewpoint" rows="4" placeholder="請輸入你對這本書的某個觀點或想探討的主題..." required></textarea>
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" class="btn-primary">發布討論</button>
+            <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="document.getElementById('addBookModal').close()">取消</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    // 切換留言的「顯示模式」與「編輯表單模式」
+    function toggleEditMode(commentId) {
+        const viewDiv = document.getElementById('view-mode-' + commentId);
+        const editForm = document.getElementById('edit-mode-' + commentId);
+        
+        if (viewDiv.style.display === 'none') {
+            viewDiv.style.display = 'block';
+            editForm.style.display = 'none';
+        } else {
+            viewDiv.style.display = 'none';
+            editForm.style.display = 'block';
+        }
+    }
+</script>
+
+<style>
+    /* 強化卡片與列表微互動 */
+    div[onclick]:hover {
+        opacity: 0.85;
+    }
+    .viewpoint-item:hover {
+        background: rgba(165,184,143,0.08) !important;
+    }
+    div.card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    
+    /* Dialog 統一排版美化 */
+    .custom-dialog {
+        width: 90%; 
+        max-width: 550px; 
+        border-radius: 12px; 
+        border: none; 
+        padding: 20px; 
+        box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+    }
+    .custom-dialog::backdrop {
+        background: rgba(0, 0, 0, 0.4);
+    }
+</style>
+{% endblock %}

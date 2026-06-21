@@ -1,0 +1,142 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h1 style="text-align: center; font-size: 40px; margin-bottom: 40px; letter-spacing: 3px;">個人主頁</h1>
+
+<div class="grid-2" style="align-items: flex-start;">
+    
+    <div class="card" style="background-color: #fff; padding: 40px; border-radius: 30px;">
+        <div style="display: flex; align-items: center; gap: 30px; margin-bottom: 30px;">
+            <div style="width: 100px; height: 100px; border-radius: 50%; background: #ddd; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                {% if user['avatar_url'] %}
+                    <img src="{{ url_for('static', filename='uploads/' + user['avatar_url']) }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    <span style="font-size: 12px; color: #666;">無照片</span>
+                {% endif %}
+            </div>
+            <div>
+                <h2 style="margin: 0; font-size: 24px;">{{ user['nickname'] if user['nickname'] else '尚未設定暱稱' }}</h2>
+                <p style="margin: 5px 0 0 0; color: #666;">@{{ user['username'] }}</p>
+            </div>
+        </div>
+        
+        <p style="line-height: 1.6; color: #444; margin-bottom: 30px;">
+            <b>自我介紹：</b><br>
+            {{ user['bio'] if user['bio'] else '點擊右側選單「編輯個人檔案」來寫點自我介紹吧！' }}
+        </p>
+        
+        <div style="border-top: 2px dashed #ccc; padding-top: 20px;">
+            <p>📖 <b>最喜歡的一本書：</b> {{ user['fav_book'] if user['fav_book'] else '尚未填寫' }}</p>
+            <p>✨ <b>金句：</b> {{ user['quote'] if user['quote'] else '尚未填寫' }}</p>
+        </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 30px;">
+        
+        <div class="card" style="background-color: #c6bee3;">
+            <h3 style="margin-top: 0; border-bottom: 2px solid rgba(0,0,0,0.1); padding-bottom: 10px;">帳號設定</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px;">
+                <li>
+                    <button class="btn-secondary" style="border: none; text-align: left; margin: 0; background-color: rgba(255,255,255,0.3);" onclick="document.getElementById('editProfileModal').showModal()">✏️ 編輯個人檔案</button>
+                </li>
+                <li>
+                    <button class="btn-secondary" style="border: none; text-align: left; margin: 0; background-color: rgba(255,255,255,0.3);" onclick="document.getElementById('editPasswordModal').showModal()">🔒 帳號安全 (修改密碼)</button>
+                </li>
+                <li>
+                    <button class="btn-secondary" style="border: none; text-align: left; margin: 0; background-color: rgba(255,255,255,0.3);" onclick="alert('隱私設定功能開發中！敬請期待。')">👁️ 隱私設定 (切公開/不公開)</button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card" style="background-color: #d4b8cc;">
+            <h3 style="margin: 0 0 15px 0;">我的書櫃 TOP3</h3>
+            
+            <div style="display: flex; justify-content: space-around; gap: 15px;">
+            {% for slot in [1, 2, 3] %}
+                {% set img_url = user['top' ~ slot ~ '_img'] %}
+    
+                <div class="top-book-slot" 
+                    data-slot="{{ slot }}" 
+                    onclick="openTopBookModal(this.dataset.slot)" 
+                    style="width: 100px; height: 150px; position: relative; border-radius: 6px; overflow: hidden; background: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: 0.2s;">
+        
+                    {% if img_url %}
+                        <img src="{{ url_for('static', filename='uploads/' + img_url) }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div class="edit-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; opacity: 0; transition: 0.2s;">
+                            ✎ 更換
+                        </div>
+                    {% else %}
+                        <div class="empty-slot" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #666; border: 2px dashed #999; box-sizing: border-box; background: transparent; transition: 0.2s;">
+                            ＋ TOP{{ slot }}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            </div>
+            <p style="text-align: center; font-size: 12px; color: #555; margin-top: 15px; margin-bottom: 0;">點擊圖片隨時更換你的最愛榜單！</p>
+        </div>
+    </div>
+</div>
+
+<dialog id="editProfileModal">
+    <h3 style="margin-top: 0;">編輯個人檔案</h3>
+    <form method="POST" action="/profile" enctype="multipart/form-data">
+        <label>更換大頭照：</label>
+        <input type="file" name="avatar" accept="image/*">
+        <label>暱稱：</label>
+        <input type="text" name="nickname" value="{{ user['nickname'] if user['nickname'] else '' }}" placeholder="請輸入您的暱稱" required>
+        <label>自我介紹：</label>
+        <textarea name="bio" rows="3" placeholder="介紹一下自己吧...">{{ user['bio'] if user['bio'] else '' }}</textarea>
+        <label>最喜歡的一本書：</label>
+        <input type="text" name="fav_book" value="{{ user['fav_book'] if user['fav_book'] else '' }}">
+        <label>金句：</label>
+        <input type="text" name="quote" value="{{ user['quote'] if user['quote'] else '' }}">
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" class="btn-primary">儲存變更</button>
+            <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="document.getElementById('editProfileModal').close()">取消</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="editPasswordModal">
+    <h3 style="margin-top: 0;">修改密碼</h3>
+    <form method="POST" action="/change_password">
+        <label>請輸入新密碼：</label>
+        <input type="password" name="new_password" required>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" class="btn-primary">確認修改</button>
+            <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="document.getElementById('editPasswordModal').close()">取消</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="editTopBookModal">
+    <h3 style="margin-top: 0;">設定 TOP <span id="topBookSlotNum"></span> 書籍封面</h3>
+    <form id="topBookForm" method="POST" action="" enctype="multipart/form-data">
+        <label>上傳書本照片：</label>
+        <input type="file" name="top_book_img" accept="image/*" required>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button type="submit" class="btn-primary">確定上傳</button>
+            <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="document.getElementById('editTopBookModal').close()">取消</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    function openTopBookModal(slot) {
+        document.getElementById('topBookSlotNum').innerText = slot;
+        document.getElementById('topBookForm').action = '/update_top_book/' + slot;
+        document.getElementById('editTopBookModal').showModal();
+    }
+</script>
+
+<style>
+    .top-book-slot:hover { transform: scale(1.05); }
+    .top-book-slot:hover .edit-overlay { opacity: 1 !important; }
+    .empty-slot:hover { background-color: rgba(255,255,255,0.4) !important; }
+    button.btn-secondary:hover { background-color: rgba(255,255,255,0.7) !important; }
+    
+    dialog { width: 90%; max-width: 500px; border-radius: 12px; border: none; padding: 20px; box-shadow: 0 5px 25px rgba(0,0,0,0.3); }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+</style>
+{% endblock %}

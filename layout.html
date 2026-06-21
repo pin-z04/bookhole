@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>書洞 BookHole</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2">
+</head>
+<body>
+    <header>
+        <a href="/">書洞</a>
+        {% if session.get('user_id') %}
+            <a href="/logout" style="font-size: 16px; background: white; color: black; padding: 5px 15px; border-radius: 5px; font-weight: bold;">登出</a>
+        {% endif %}
+    </header>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
