@@ -449,6 +449,13 @@ def delete_comment(comment_id):
     conn.commit()
     conn.close()
     return redirect(url_for('discussion'))
+from flask import send_from_directory
+
+# 建立圖片橋樑：不論你的 HTML 寫 /static/uploads/ 還是 /uploads/，都能自動應付！
+@app.route('/static/uploads/<filename>')
+@app.route('/uploads/<filename>')
+def serve_uploaded_images(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == '__main__':
     app.run(debug=True)
